@@ -1,3 +1,4 @@
+#ocr-claim-demo\src\settings\design_pattern\__init__.py
 def singleton(cls):
     instances = {}
 
