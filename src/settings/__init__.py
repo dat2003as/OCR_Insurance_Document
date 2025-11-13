@@ -1,6 +1,6 @@
 import os
 
-from traitlets import List
+from typing  import List
 from .design_pattern import singleton
 from dotenv import load_dotenv
 
@@ -16,16 +16,27 @@ class AppSettings:
     GEMINI_API_KEY: str = os.getenv("GEMINI_API_KEY")
     GEMINI_MODEL: str = "gemini-2.5-flash"
     ALLOWED_ORIGINS: List[str] = ["*"]
+
     # File upload settings
     ALLOWED_EXTENSIONS: set = {".pdf", ".png", ".jpg", ".jpeg", ".tiff", ".bmp"}
     PDF_DPI: int = 300
     MAX_FILE_SIZE: int = 10 * 1024 * 1024  # 10MB
     ALLOWED_EXTENSIONS: List[str] = [".pdf"]
-    
+
+    #agents
+    EXTRACTION_AGENT_NAME: str = "Medical Document Extraction Agent"
+    VALIDATION_AGENT_NAME: str = "Medical Data Validation Agent"
+
     # Processing
     MAX_PAGES: int = 4
     RATE_LIMIT_DELAY: float = 1.0  # seconds between API calls
     
+    # Application URL
+    APP_URL: str = ("APP_URL", "http://localhost:8000")
+    # Redis Settings
+    REDIS_URL: str =os.getenv("REDIS_URL")
+    # Database Settings
+    DATABASE_URL: str = os.getenv("DATABASE_URL")
     # Paths
     UPLOAD_DIR: str = "uploads"
     TEMP_DIR: str = "temp"

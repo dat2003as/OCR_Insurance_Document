@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OCR Y Tế Tool</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .animate-spin {
+      animation: spin 1s linear infinite;
+    }
+  </style>
+</head>
+<body>
+  <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-8 px-4">
+    <div class="max-w-4xl mx-auto">
+      <div class="bg-white rounded-2xl shadow-xl p-8">
+        <div class="flex items-center gap-3 mb-6">
+          <svg class="w-8 h-8 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+          </svg>
+          <h1 class="text-3xl font-bold text-gray-800">OCR Y Tế Tool</h1>
+        </div>
+        
+        <p class="text-gray-600 mb-8">
+          Trích xuất thông tin từ biểu mẫu y tế 4 trang với AI chuyên biệt cho từng trang
+        </p>
+
+        <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 mb-6 hover:border-indigo-400 transition-colors">
+          <div class="flex flex-col items-center gap-4">
+            <svg class="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
+            </svg>
+            <label class="cursor-pointer">
+              <span class="bg-indigo-600 text-white px-6 py-3 rounded-lg hover:bg-indigo-700 transition-colors inline-block">
+                Chọn File PDF
+              </span>
+              <input type="file" accept=".pdf" id="fileInput" class="hidden">
+            </label>
+            <div id="fileInfo" class="hidden items-center gap-2 text-sm text-gray-600">
+              <svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <span id="fileName"></span>
+            </div>
+          </div>
+        </div>
+
+        <button id="uploadBtn" disabled class="w-full bg-indigo-600 text-white py-3 rounded-lg font-semibold hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2">
+          Trích xuất thông tin
+        </button>
+
+        <div id="error" class="hidden mt-6 bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
+          <svg class="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <p class="text-red-700" id="errorMessage"></p>
+        </div>
+
+        <div id="result" class="hidden mt-6 bg-green-50 border border-green-200 rounded-lg p-6"></div>
+      </div>
+
+      <div class="mt-6 bg-white rounded-lg shadow p-6">
+        <h3 class="font-semibold text-gray-800 mb-3">Hướng dẫn sử dụng:</h3>
+        <ol class="list-decimal list-inside space-y-2 text-sm text-gray-600">
+          <li>Chọn file PDF 4 trang (biểu mẫu bồi thường y tế)</li>
+          <li>Hệ thống sẽ xử lý từng trang với prompt chuyên biệt</li>
+          <li>Nhấn "Trích xuất thông tin" để bắt đầu</li>
+          <li>Xem kết quả tổng hợp và từng trang</li>
+        </ol>
+        <div class="mt-4 p-3 bg-blue-50 rounded text-xs text-gray-600">
+          <strong>Cấu trúc 4 trang:</strong>
+          <ul class="mt-2 space-y-1 ml-4">
+            <li>🟢 Trang 1: Thông tin cá nhân và chính sách</li>
+            <li>🔵 Trang 2: Hướng dẫn thanh toán</li>
+            <li>🟡 Trang 3: Tuyên bố và chữ ký</li>
+            <li>🔴 Trang 4: Báo cáo y tế từ bác sĩ</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let selectedFile = null;
+
+    const fileInput = document.getElementById('fileInput');
+    const fileInfo = document.getElementById('fileInfo');
+    const fileName = document.getElementById('fileName');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const errorDiv = document.getElementById('error');
+    const errorMessage = document.getElementById('errorMessage');
+    const resultDiv = document.getElementById('result');
+
+    fileInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file && file.type === 'application/pdf') {
+        selectedFile = file;
+        fileName.textContent = file.name;
+        fileInfo.classList.remove('hidden');
+        fileInfo.classList.add('flex');
+        uploadBtn.disabled = false;
+        errorDiv.classList.add('hidden');
+        resultDiv.classList.add('hidden');
+      } else {
+        showError('Vui lòng chọn file PDF');
+        selectedFile = null;
+        fileInfo.classList.add('hidden');
+        uploadBtn.disabled = true;
+      }
+    });
+
+    uploadBtn.addEventListener('click', async () => {
+      if (!selectedFile) {
+        showError('Vui lòng chọn file trước');
+        return;
+      }
+
+      uploadBtn.disabled = true;
+      uploadBtn.innerHTML = '<svg class="w-5 h-5 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Đang xử lý...';
+      errorDiv.classList.add('hidden');
+      resultDiv.classList.add('hidden');
+
+      try {
+        const formData = new FormData();
+        formData.append('file', selectedFile);
+
+        const response = await fetch('http://localhost:8000/api/v1/ocr/extract-multipage', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error('Lỗi khi xử lý file');
+        }
+
+        const data = await response.json();
+        displayResult(data);
+      } catch (err) {
+        showError(err.message || 'Đã xảy ra lỗi khi xử lý file');
+      } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.innerHTML = 'Trích xuất thông tin';
+      }
+    });
+
+    function showError(message) {
+      errorMessage.textContent = message;
+      errorDiv.classList.remove('hidden');
+    }
+   function displayResult(data) {
+      resultDiv.classList.remove('hidden');
+      
+      const fieldLabels = {
+        // Policy Details
+        'policyowner_name': 'Chủ hợp đồng',
+        'policy_number': 'Số hợp đồng',
+        
+        // Insured Info
+        'name': 'Họ tên',
+        'occupation': 'Nghề nghiệp',
+        'id_passport': 'CMND/Hộ chiếu',
+        'date_of_birth': 'Ngày sinh',
+        'sex': 'Giới tính',
+        'address': 'Địa chỉ',
+        'phone': 'Điện thoại',
+        'email': 'Email',
+        
+        // Payment Instructions
+        'payment_method': 'Phương thức thanh toán',
+        'account_holder_name': 'Tên chủ tài khoản',
+        'bank_name': 'Ngân hàng',
+        'bank_no': 'Mã ngân hàng',
+        'branch_no': 'Mã chi nhánh',
+        'bank_account_no': 'Số tài khoản',
+        
+        // Declaration
+        'signatory_name': 'Người ký',
+        'signature_date': 'Ngày ký',
+        'has_signature': 'Có chữ ký',
+        
+        // Prior Treatment Info
+        'had_prior_treatment': 'Đã điều trị trước đó',
+        'doctor_name': 'Tên bác sĩ điều trị',
+        'treatment_date': 'Ngày điều trị',
+        
+        // Accident Info
+        'is_result_of_accident': 'Do tai nạn',
+        
+        // Other Claim Submission
+        'submitted_to_other_company': 'Đã nộp đơn cho công ty khác',
+        
+        // Physician Report - Patient Info
+        'patient_name': 'Tên bệnh nhân',
+        'admission_date': 'Ngày nhập viện',
+        'discharge_date': 'Ngày xuất viện',
+        'hospital_ward_level': 'Loại phòng',
+        
+        // Physician Report - Clinical History
+        'first_consult_date': 'Ngày khám đầu tiên',
+        'symptom_duration': 'Thời gian có triệu chứng',
+        'symptoms': 'Triệu chứng',
+        
+        // Physician Report - Diagnosis & Surgery
+        'final_diagnosis': 'Chẩn đoán cuối cùng',
+        'operation_procedures': 'Thủ thuật/Phẫu thuật',
+        'mode_of_anaesthesia': 'Phương thức gây mê',
+        'outpatient_possible': 'Có thể điều trị ngoại trú',
+        'outpatient_reason': 'Lý do không ngoại trú',
+        'comorbidity': 'Bệnh đi kèm',
+        'is_emergency': 'Cấp cứu',
+        
+        // Physician Report - Professional Comment
+        'is_recurrent_or_chronic': 'Tái phát/Mạn tính',
+        'associated_conditions': 'Các bệnh liên quan',
+        
+        // Physician Report - Doctor Info
+        'name_qualifications': 'Bác sĩ & Trình độ',
+        'doctor_address': 'Địa chỉ bác sĩ',
+        'doctor_phone': 'Điện thoại bác sĩ',
+        'doctor_email': 'Email bác sĩ',
+        'doctor_specialty': 'Chuyên khoa',
+        'doctor_license': 'Số chứng chỉ hành nghề',
+        'hospital_name': 'Tên bệnh viện',
+        'hospital_address': 'Địa chỉ bệnh viện',
+        'has_doctor_signature': 'Có chữ ký bác sĩ',
+        'doctor_stamp': 'Có dấu bác sĩ'
+      };
+      
+      let html = `
+        <div class="flex items-center justify-between mb-6">
+          <div class="flex items-center gap-3">
+            <svg class="w-7 h-7 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <h3 class="text-xl font-bold text-green-800">
+              Trích xuất thành công! (${data.total_pages} trang)
+            </h3>
+          </div>
+          <button onclick="downloadJSON()" class="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm font-medium shadow-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+            </svg>
+            Tải JSON
+          </button>
+        </div>
+        <div class="space-y-5">
+      `;
+
+      if (data.merged_data) {
+        // Policy Details
+        if (data.merged_data.policy_details && Object.keys(data.merged_data.policy_details).length > 0) {
+          html += '<div class="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-5 shadow-sm border border-blue-200">';
+          html += '<h5 class="font-bold text-blue-900 mb-4 flex items-center gap-2"><span class="text-xl">🟢</span> Thông tin Chính sách</h5>';
+          html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+          Object.entries(data.merged_data.policy_details).forEach(([key, value]) => {
+            const label = fieldLabels[key] || key;
+            html += `
+              <div class="bg-white rounded-lg p-3 border-l-4 border-blue-500">
+                <span class="text-xs text-gray-500 uppercase tracking-wide block mb-1">${label}</span>
+                <p class="text-gray-800 font-medium">${value || 'N/A'}</p>
+              </div>
+            `;
+          });
+          html += '</div></div>';
+        }
+
+        // Insured Info
+        if (data.merged_data.insured_info && Object.keys(data.merged_data.insured_info).length > 0) {
+          html += '<div class="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-5 shadow-sm border border-green-200">';
+          html += '<h5 class="font-bold text-green-900 mb-4 flex items-center gap-2"><span class="text-xl">👤</span> Thông tin Người được bảo hiểm</h5>';
+          html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+          Object.entries(data.merged_data.insured_info).forEach(([key, value]) => {
+            const label = fieldLabels[key] || key;
+            html += `
+              <div class="bg-white rounded-lg p-3 border-l-4 border-green-500">
+                <span class="text-xs text-gray-500 uppercase tracking-wide block mb-1">${label}</span>
+                <p class="text-gray-800 font-medium">${value || 'N/A'}</p>
+              </div>
+            `;
+          });
+          html += '</div></div>';
+        }
+
+        // Benefits to Claim
+        if (data.merged_data.benefits_to_claim && data.merged_data.benefits_to_claim.length > 0) {
+          html += '<div class="bg-gradient-to-br from-indigo-50 to-indigo-100 rounded-xl p-5 shadow-sm border border-indigo-200">';
+          html += '<h5 class="font-bold text-indigo-900 mb-4 flex items-center gap-2"><span class="text-xl">💰</span> Quyền lợi yêu cầu</h5>';
+          html += '<div class="bg-white rounded-lg p-4">';
+          html += '<ul class="space-y-2">';
+          data.merged_data.benefits_to_claim.forEach(benefit => {
+            html += `<li class="flex items-center gap-2 text-gray-800"><svg class="w-5 h-5 text-indigo-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg><span class="font-medium">${benefit}</span></li>`;
+          });
+          html += '</ul></div></div>';
+        }
+
+        // Payment Instructions
+        if (data.merged_data.payment_instructions && Object.keys(data.merged_data.payment_instructions).length > 0) {
+          html += '<div class="bg-gradient-to-br from-yellow-50 to-yellow-100 rounded-xl p-5 shadow-sm border border-yellow-200">';
+          html += '<h5 class="font-bold text-yellow-900 mb-4 flex items-center gap-2"><span class="text-xl">🔵</span> Hướng dẫn Thanh toán</h5>';
+          html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+          Object.entries(data.merged_data.payment_instructions).forEach(([key, value]) => {
+            const label = fieldLabels[key] || key;
+            html += `
+              <div class="bg-white rounded-lg p-3 border-l-4 border-yellow-500">
+                <span class="text-xs text-gray-500 uppercase tracking-wide block mb-1">${label}</span>
+                <p class="text-gray-800 font-medium">${value || 'N/A'}</p>
+              </div>
+            `;
+          });
+          html += '</div></div>';
+        }
+
+        // Declaration
+        if (data.merged_data.declaration && Object.keys(data.merged_data.declaration).length > 0) {
+          html += '<div class="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-5 shadow-sm border border-purple-200">';
+          html += '<h5 class="font-bold text-purple-900 mb-4 flex items-center gap-2"><span class="text-xl">🟡</span> Tuyên bố & Chữ ký</h5>';
+          html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">';
+          Object.entries(data.merged_data.declaration).forEach(([key, value]) => {
+            const label = fieldLabels[key] || key;
+            const displayValue = typeof value === 'boolean' ? (value ? 'Có' : 'Không') : (value || 'N/A');
+            html += `
+              <div class="bg-white rounded-lg p-3 border-l-4 border-purple-500">
+                <span class="text-xs text-gray-500 uppercase tracking-wide block mb-1">${label}</span>
+                <p class="text-gray-800 font-medium">${displayValue}</p>
+              </div>
+            `;
+          });
+          html += '</div></div>';
+        }
+
+        // Physician Report
+        if (data.merged_data.physician_report && Object.keys(data.merged_data.physician_report).length > 0) {
+          html += '<div class="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-5 shadow-sm border border-red-200">';
+          html += '<h5 class="font-bold text-red-900 mb-4 flex items-center gap-2"><span class="text-xl">🔴</span> Báo cáo Y tế của Bác sĩ</h5>';
+          
+          const renderNestedObject = (obj, depth = 0) => {
+            let nestedHtml = '';
+            Object.entries(obj).forEach(([key, value]) => {
+              const label = fieldLabels[key] || key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+              
+              if (value && typeof value === 'object' && !Array.isArray(value)) {
+                nestedHtml += `<div class="bg-white rounded-lg p-4 ${depth > 0 ? 'ml-4' : ''} mb-3">`;
+                nestedHtml += `<h6 class="font-semibold text-red-800 mb-3 text-sm uppercase tracking-wide">${label}</h6>`;
+                nestedHtml += renderNestedObject(value, depth + 1);
+                nestedHtml += '</div>';
+              } else {
+                let displayValue;
+                if (Array.isArray(value)) {
+                  displayValue = value.length > 0 ? value.join(', ') : 'N/A';
+                } else if (typeof value === 'boolean') {
+                  displayValue = value ? 'Có' : 'Không';
+                } else {
+                  displayValue = value || 'N/A';
+                }
+                
+                nestedHtml += `
+                  <div class="bg-white rounded-lg p-3 border-l-4 border-red-500 ${depth > 0 ? 'ml-4' : ''} mb-2">
+                    <span class="text-xs text-gray-500 uppercase tracking-wide block mb-1">${label}</span>
+                    <p class="text-gray-800 font-medium">${displayValue}</p>
+                  </div>
+                `;
+              }
+            });
+            return nestedHtml;
+          };
+          
+          html += '<div class="space-y-2">';
+          html += renderNestedObject(data.merged_data.physician_report);
+          html += '</div></div>';
+        }
+      }
+
+      // Validation Errors
+      if (data.validation_errors && Object.keys(data.validation_errors).length > 0 && 
+          Object.values(data.validation_errors).some(errors => Array.isArray(errors) && errors.length > 0)) {
+        html += '<div class="bg-orange-50 border-2 border-orange-300 rounded-xl p-5 shadow-sm">';
+        html += '<h4 class="font-bold text-orange-900 mb-3 flex items-center gap-2"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg> Cảnh báo xác thực</h4>';
+        Object.entries(data.validation_errors).forEach(([section, errors]) => {
+          if (Array.isArray(errors) && errors.length > 0) {
+            html += `<div class="mb-3 bg-white rounded-lg p-3 border-l-4 border-orange-500">`;
+            html += `<span class="font-semibold text-orange-800 block mb-2">${section}:</span>`;
+            html += `<ul class="space-y-1">`;
+            errors.forEach(error => {
+              html += `<li class="flex items-start gap-2 text-sm text-orange-700"><svg class="w-4 h-4 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg><span>${error}</span></li>`;
+            });
+            html += '</ul></div>';
+          }
+        });
+        html += '</div>';
+      }
+
+      html += '</div>';
+      resultDiv.innerHTML = html;
+      
+      // Store data for download
+      window.currentResult = data;
+    }
+    
+
+    function downloadJSON() {
+      if (!window.currentResult) return;
+      const dataStr = JSON.stringify(window.currentResult, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'ocr-result.json';
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>

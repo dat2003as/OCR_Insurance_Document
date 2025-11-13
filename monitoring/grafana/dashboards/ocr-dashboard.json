@@ -1,0 +1,123 @@
+{
+  "id": null,
+  "uid": "ocr-dashboard",
+  "title": "OCR Medical Document API Dashboard",
+  "schemaVersion": 36,
+  "version": 2,
+  "panels": [
+    {
+      "id": 1,
+      "title": "Total Extractions",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 3, "h": 4 },
+      "targets": [{ "expr": "ocr_extractions_total" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 1 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Active Extractions",
+      "type": "stat",
+      "gridPos": { "x": 3, "y": 0, "w": 3, "h": 4 },
+      "targets": [{ "expr": "active_extractions" }],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": 0 },
+              { "color": "orange", "value": 5 },
+              { "color": "red", "value": 10 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Cache Hit Rate (%)",
+      "type": "gauge",
+      "gridPos": { "x": 6, "y": 0, "w": 3, "h": 4 },
+      "targets": [
+        { "expr": "cache_hits_total / (cache_hits_total + cache_misses_total) * 100" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "max": 100,
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": 0 },
+              { "color": "orange", "value": 60 },
+              { "color": "green", "value": 90 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "Error Rate (by Type)",
+      "type": "graph",
+      "gridPos": { "x": 9, "y": 0, "w": 3, "h": 4 },
+      "targets": [
+        { "expr": "rate(errors_total[5m])", "legendFormat": "{{error_type}}" }
+      ],
+      "lines": true,
+      "fill": 1,
+      "linewidth": 2
+    },
+    {
+      "id": 5,
+      "title": "API Requests Rate",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 4, "w": 6, "h": 6 },
+      "targets": [
+        {
+          "expr": "rate(api_requests_total[5m])",
+          "legendFormat": "{{method}} {{endpoint}} - {{status}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "color": { "mode": "palette-classic" }
+        }
+      }
+    },
+    {
+      "id": 6,
+      "title": "OCR Processing Duration (p95)",
+      "type": "timeseries",
+      "gridPos": { "x": 6, "y": 4, "w": 6, "h": 6 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, rate(ocr_processing_duration_seconds_bucket[5m]))",
+          "legendFormat": "95th percentile"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "color": { "mode": "palette-classic" }
+        }
+      }
+    }
+  ]
+}

@@ -5,9 +5,8 @@ import google.generativeai as genai
 from PIL import Image
 import json
 from typing import Dict, Any, List
-from fastapi import HTTPException
 from src.settings import APP_SETTINGS
-from src.settings.prompts import PromptFactory  # Import from prompts
+from src.settings.prompts import PromptFactory  
 import asyncio
 
 # Configure Gemini
